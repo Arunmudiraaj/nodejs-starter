@@ -1,25 +1,36 @@
 const http = require("http");
+const fs = require("fs");
+const { buffer } = require("stream/consumers");
 const server = http.createServer((req, res) => {
+  const method = req.method;
   // console.log(req.url, req.headers, req.method);
   // process.exit();
-  res.setHeader("Content-Type", "text/html");
-  if (req.url === "/home") {
-    res.write("<body><h1>Welcome to Home</h2></body>");
-    return res.end();
-  }
-  if (req.url === "/about") {
-    res.write("<body><h1>Welcome to about us page</h2></body>");
-    return res.end();
-  }
-  if (req.url === "/node") {
-    res.write("<body><h1>Welcome to node</h1></body>");
-    return res.end();
-  }
 
-  res.write("<html>");
-  res.write("<head> <title> My Node Server </title></head>");
-  res.write("<body><h1>This is a server</h2></body>");
-  res.write("</html>");
-  res.end();
+  if (req.url === "/") {
+    fs.readFile("message.txt", (err, data) => {
+      console.log(err);
+      console.log(data);
+      res.write(
+        `<body> <p>${data}</p> <form action='/message' method='POST'> <input type='text' name='text'/> <button type='submit'>Send</button></form></body>`
+      );
+      return res.end();
+    });
+  }
+  if (req.url === "/message" && method === "POST") {
+    const body = [];
+    req.on("data", (chunk) => {
+      body.push(chunk);
+      console.log(chunk);
+    });
+    req.on("end", () => {
+      const parsedBody = Buffer.concat(body).toString();
+      const message = parsedBody.split("=")[1];
+      fs.writeFile("message.txt", message, (err) => {
+        res.statusCode = 302;
+        res.setHeader("location", "/");
+        return res.end();
+      });
+    });
+  }
 });
 server.listen(3000);
